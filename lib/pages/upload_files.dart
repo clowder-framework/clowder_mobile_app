@@ -50,6 +50,10 @@ class _FileUploadPageState extends State<FileUploadPage> {
                   onPressed: _choose,
                   child: Text('Choose Image'),
                 ),
+                RaisedButton(
+                  onPressed: _choose_existing,
+                  child: Text('Select From Gallery'),
+                ),
                 SizedBox(width: 10.0),
                 Text(_message),
               ]
@@ -92,6 +96,15 @@ class _FileUploadPageState extends State<FileUploadPage> {
       hasFile = true;
     });
     // file = await ImagePicker.pickImage(source: ImageSource.gallery);
+  }
+
+  void _choose_existing() async {
+    file = await ImagePicker.pickImage(source: ImageSource.gallery);
+    setState(() {
+      _message = "file has been chosen";
+      hasFile = true;
+    });
+
   }
 
 
