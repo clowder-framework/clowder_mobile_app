@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as path;
 import 'view_basic_data.dart';
 import 'view_single_dataset.dart';
 import 'package:async/async.dart' as async_import;
@@ -27,6 +29,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
   String _message = "No file chosen";
   bool hasFile = false;
   File file;
+  List<File> files;
 
   _FileUploadPageState(this.dataset_id,this.dataset_name);
 
@@ -48,11 +51,11 @@ class _FileUploadPageState extends State<FileUploadPage> {
                 SizedBox(width: 10.0),
                 RaisedButton(
                   onPressed: _choose,
-                  child: Text('Choose Image'),
+                  child: Text('Take Picture'),
                 ),
                 RaisedButton(
-                  onPressed: _choose_existing,
-                  child: Text('Select From Gallery'),
+                  onPressed: _choose_existing_files,
+                  child: Text('Select Multi From Anywhere'),
                 ),
                 SizedBox(width: 10.0),
                 Text(_message),
@@ -107,50 +110,108 @@ class _FileUploadPageState extends State<FileUploadPage> {
 
   }
 
+  void _choose_existing_file() async {
+    file = await FilePicker.getFile();
+    setState(() {
+      _message = "file has been chosen";
+      hasFile = true;
+    });
+
+  }
+
+  void _choose_existing_files() async {
+    files = await FilePicker.getMultiFile();
+    setState(() {
+      _message = "multi files chosen";
+      hasFile = true;
+    });
+
+  }
+
 
   void _clowderUpload() async {
-    if (file == null){
+    if (file == null && files == null ){
       Navigator.push(
           context,
           new MaterialPageRoute(
               builder: (BuildContext context) =>
-              new ViewBasicData("did not work did not have file")));
+              new ViewBasicData("fail : file null, files null")));
     } else {
 
-      var current_datetime = new DateTime.now();
-      var stamp = current_datetime.year.toString()+'-'+current_datetime.month.toString()+
-          '-'+current_datetime.day.toString()+'-'+current_datetime.hour.toString()+'-'+current_datetime.minute.toString()+current_datetime.second.toString();
-      var temp_filename = 'mobile_upload_'+stamp+'.jpg';
+      if (files == null) {
+        var current_datetime = new DateTime.now();
+        var stamp = current_datetime.year.toString()+'-'+current_datetime.month.toString()+
+            '-'+current_datetime.day.toString()+'-'+current_datetime.hour.toString()+'-'+current_datetime.minute.toString()+current_datetime.second.toString();
+        var temp_filename = 'mobile_upload_'+stamp+'.jpg';
 
-      var imageFile = file;
-      var stream = new http.ByteStream(async_import.DelegatingStream.typed(imageFile.openRead()));
-      var length = await imageFile.length();
-      var uri = Uri.parse(clowderEndpoint+this.dataset_id+'/files?key='+user_info.currentLoginToken);
+        var imageFile = file;
+        var stream = new http.ByteStream(async_import.DelegatingStream.typed(imageFile.openRead()));
+        var length = await imageFile.length();
+        var uri = Uri.parse(clowderEndpoint+this.dataset_id+'/files?key='+user_info.currentLoginToken);
 
-      var request = new http.MultipartRequest("POST", uri);
-      request.headers['Authorization'] = user_info.auth;
+        var request = new http.MultipartRequest("POST", uri);
+        request.headers['Authorization'] = user_info.auth;
 
-      var multipartFile = new http.MultipartFile('file', stream, length,
-          filename: temp_filename);
+        var multipartFile = new http.MultipartFile('file', stream, length,
+            filename: temp_filename);
 
-      request.files.add(multipartFile);
+        request.files.add(multipartFile);
 
 
-      var response = await request.send();
+        var response = await request.send();
 
-      if (response.statusCode == 200){
-        Navigator.push(
-            context,
-            new MaterialPageRoute(
-                builder: (BuildContext context) =>
-                new ViewSingleDataset(this.dataset_id)));
+        if (response.statusCode == 200){
+          Navigator.push(
+              context,
+              new MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                  new ViewSingleDataset(this.dataset_id)));
+        } else {
+          Navigator.push(
+              context,
+              new MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                  new ViewBasicData("post file FAIL: " + clowderEndpoint+this.dataset_id+'/files?key='+user_info.currentLoginToken)));
+        }
       } else {
-        Navigator.push(
-            context,
-            new MaterialPageRoute(
-                builder: (BuildContext context) =>
-                new ViewBasicData("post file FAIL: " + clowderEndpoint+this.dataset_id+'/files?key='+user_info.currentLoginToken)));
+        var count = 0;
+        var uri = Uri.parse(clowderEndpoint+this.dataset_id+'/files?key='+user_info.currentLoginToken);
+        var request = new http.MultipartRequest("POST", uri);
+        request.headers['Authorization'] = user_info.auth;
+        for (File f in files) {
+
+          var current_datetime = new DateTime.now();
+          var stamp = current_datetime.year.toString()+'-'+current_datetime.month.toString()+
+              '-'+current_datetime.day.toString()+'-'+current_datetime.hour.toString()+'-'+current_datetime.minute.toString()+current_datetime.second.toString();
+          var temp_filename = 'mobile_upload_'+stamp+ path.extension(f.path);
+
+          var imageFile = f;
+          var stream = new http.ByteStream(async_import.DelegatingStream.typed(imageFile.openRead()));
+          var length = await imageFile.length();
+          var multipartFile = new http.MultipartFile('file', stream, length,
+              filename: temp_filename);
+
+          request.files.add(multipartFile);
+          count +=1;
+
+          if (count == files.length) {
+            var response = await request.send();
+            if (response.statusCode == 200) {
+              Navigator.push(
+                        context,
+                        new MaterialPageRoute(
+                        builder: (BuildContext context) => new ViewSingleDataset(this.dataset_id)));
+            } else {
+              Navigator.push(
+                    context,
+                      new MaterialPageRoute(
+                      builder: (BuildContext context) =>
+                      new ViewBasicData("post file FAIL: " + clowderEndpoint+this.dataset_id+'/files?key='+user_info.currentLoginToken)));
+            }
+          }
+        }
       }
+
 
 
     }
