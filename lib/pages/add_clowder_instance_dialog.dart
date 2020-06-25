@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 
 class AddClowderInstanceDialog {
-  final teURL = TextEditingController();
+  final teURL = TextEditingController(text: "https://");
   final teToken = TextEditingController();
   ClowderInstance instance;
 

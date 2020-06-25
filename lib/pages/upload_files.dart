@@ -8,88 +8,82 @@ import 'view_basic_data.dart';
 import 'view_single_dataset.dart';
 import 'package:async/async.dart' as async_import;
 import '../user_info.dart' as user_info;
+import 'package:geolocator/geolocator.dart';
+import 'dart:convert';
 
 class FileUploadPage extends StatefulWidget {
-
   final String dataset_id;
   final String dataset_name;
 
   FileUploadPage(this.dataset_id, this.dataset_name);
 
-
-
   @override
-  _FileUploadPageState createState() => _FileUploadPageState( this.dataset_id,this.dataset_name);
+  _FileUploadPageState createState() =>
+      _FileUploadPageState(this.dataset_id, this.dataset_name);
 }
 
 class _FileUploadPageState extends State<FileUploadPage> {
+  final Geolocator geolocator = Geolocator()..forceAndroidLocationManager;
   String dataset_name;
   final String dataset_id;
-  String clowderEndpoint = user_info.serverAddress+'/api/datasets/';
+  String clowderEndpoint = user_info.serverAddress + '/api/datasets/';
   String _message = "No file chosen";
   bool hasFile = false;
+  var address = "";
   File file;
   List<File> files;
 
-  _FileUploadPageState(this.dataset_id,this.dataset_name);
+  _FileUploadPageState(this.dataset_id, this.dataset_name);
 
   @override
   Widget build(BuildContext context) {
-    if (!hasFile){
+    if (!hasFile) {
       return Scaffold(
         appBar: new AppBar(
           title: new Text("Upload File"),
           backgroundColor: Colors.blueAccent,
         ),
         body: Center(
-
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-                Text("Upload file for dataset "  + dataset_name),
-                SizedBox(width: 10.0),
-                RaisedButton(
-                  onPressed: _choose,
-                  child: Text('Take Picture'),
-                ),
-                RaisedButton(
-                  onPressed: _choose_existing_files,
-                  child: Text('Select Multi From Anywhere'),
-                ),
-                SizedBox(width: 10.0),
-                Text(_message),
-              ]
-          )
-        ),
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+              Text("Upload file for dataset " + dataset_name),
+              SizedBox(width: 10.0),
+              RaisedButton(
+                onPressed: _choose,
+                child: Text('Take Picture'),
+              ),
+              RaisedButton(
+                onPressed: _choose_existing_files,
+                child: Text('Select Multi From Anywhere'),
+              ),
+              SizedBox(width: 10.0),
+              Text(_message),
+            ])),
       );
     } else {
       return Scaffold(
         appBar: new AppBar(
-          title: new Text(dataset_name+' '+dataset_id),
+          title: new Text(dataset_name + ' ' + dataset_id),
           backgroundColor: Colors.blueAccent,
         ),
         body: Center(
-          child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                SizedBox(width: 10.0),
-                RaisedButton(
-                  onPressed: _clowderUpload,
-                  child: Text('Upload Image'),
-                ),
-                SizedBox(width: 10.0),
-                Text(_message),
-              ]
-          )
-        ),
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+              SizedBox(width: 10.0),
+              RaisedButton(
+                onPressed: _clowderUpload,
+                child: Text('Upload Image'),
+              ),
+              SizedBox(width: 10.0),
+              Text(_message),
+            ])),
       );
     }
-
   }
-
-
 
   void _choose() async {
     file = await ImagePicker.pickImage(source: ImageSource.camera);
@@ -107,7 +101,6 @@ class _FileUploadPageState extends State<FileUploadPage> {
       _message = "file has been chosen";
       hasFile = true;
     });
-
   }
 
   void _choose_existing_file() async {
@@ -116,7 +109,6 @@ class _FileUploadPageState extends State<FileUploadPage> {
       _message = "file has been chosen";
       hasFile = true;
     });
-
   }
 
   void _choose_existing_files() async {
@@ -125,29 +117,74 @@ class _FileUploadPageState extends State<FileUploadPage> {
       _message = "multi files chosen";
       hasFile = true;
     });
-
   }
 
+  _getAddressFromLatLng(Position current_location) async {
+    try {
+      List<Placemark> p = await geolocator.placemarkFromCoordinates(
+          current_location.latitude, current_location.longitude);
+
+      Placemark place = p[0];
+      setState(() {
+        address = "${place.locality}, ${place.postalCode}, ${place.country}";
+      });
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  _sendMetadata(fileId, location) async {
+    http.Response response = await http.post(
+        user_info.serverAddress +
+            '/api/files/' +
+            fileId +
+            '/metadata?key=' +
+            user_info.currentLoginToken,
+        headers: {
+          "Authorization": user_info.auth,
+          "Content-Type": "application/json; charset=utf-8",
+          "Accept": "application/json",
+        },
+        body: json.encode({
+          "Location": address,
+          "LatLong": location.toString()
+        }));
+  }
 
   void _clowderUpload() async {
-    if (file == null && files == null ){
+    if (file == null && files == null) {
       Navigator.push(
           context,
           new MaterialPageRoute(
               builder: (BuildContext context) =>
-              new ViewBasicData("fail : file null, files null")));
+                  new ViewBasicData("fail : file null, files null")));
     } else {
-
       if (files == null) {
         var current_datetime = new DateTime.now();
-        var stamp = current_datetime.year.toString()+'-'+current_datetime.month.toString()+
-            '-'+current_datetime.day.toString()+'-'+current_datetime.hour.toString()+'-'+current_datetime.minute.toString()+current_datetime.second.toString();
-        var temp_filename = 'mobile_upload_'+stamp+'.jpg';
+        Position current_location = await geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high);
+
+        _getAddressFromLatLng(current_location);
+        var stamp = current_datetime.year.toString() +
+            '-' +
+            current_datetime.month.toString() +
+            '-' +
+            current_datetime.day.toString() +
+            '-' +
+            current_datetime.hour.toString() +
+            '-' +
+            current_datetime.minute.toString() +
+            current_datetime.second.toString();
+        var temp_filename = 'mobile_upload_' + stamp + '.jpg';
 
         var imageFile = file;
-        var stream = new http.ByteStream(async_import.DelegatingStream.typed(imageFile.openRead()));
+        var stream = new http.ByteStream(
+            async_import.DelegatingStream.typed(imageFile.openRead()));
         var length = await imageFile.length();
-        var uri = Uri.parse(clowderEndpoint+this.dataset_id+'/files?key='+user_info.currentLoginToken);
+        var uri = Uri.parse(clowderEndpoint +
+            this.dataset_id +
+            '/files?key=' +
+            user_info.currentLoginToken);
 
         var request = new http.MultipartRequest("POST", uri);
         request.headers['Authorization'] = user_info.auth;
@@ -157,64 +194,82 @@ class _FileUploadPageState extends State<FileUploadPage> {
 
         request.files.add(multipartFile);
 
-
         var response = await request.send();
 
-        if (response.statusCode == 200){
+        if (response.statusCode == 200) {
+          final respStr = await response.stream.bytesToString();
+          var createdFileId = json.decode(respStr)['id'];
+          _sendMetadata(createdFileId, current_location);
           Navigator.push(
               context,
               new MaterialPageRoute(
                   builder: (BuildContext context) =>
-                  new ViewSingleDataset(this.dataset_id)));
+                      new ViewSingleDataset(this.dataset_id)));
         } else {
           Navigator.push(
               context,
               new MaterialPageRoute(
-                  builder: (BuildContext context) =>
-                  new ViewBasicData("post file FAIL: " + clowderEndpoint+this.dataset_id+'/files?key='+user_info.currentLoginToken)));
+                  builder: (BuildContext context) => new ViewBasicData(
+                      "post file FAIL: " +
+                          clowderEndpoint +
+                          this.dataset_id +
+                          '/files?key=' +
+                          user_info.currentLoginToken)));
         }
       } else {
         var count = 0;
-        var uri = Uri.parse(clowderEndpoint+this.dataset_id+'/files?key='+user_info.currentLoginToken);
+        var uri = Uri.parse(clowderEndpoint +
+            this.dataset_id +
+            '/files?key=' +
+            user_info.currentLoginToken);
         var request = new http.MultipartRequest("POST", uri);
         request.headers['Authorization'] = user_info.auth;
         for (File f in files) {
-
           var current_datetime = new DateTime.now();
-          var stamp = current_datetime.year.toString()+'-'+current_datetime.month.toString()+
-              '-'+current_datetime.day.toString()+'-'+current_datetime.hour.toString()+'-'+current_datetime.minute.toString()+current_datetime.second.toString();
-          var temp_filename = 'mobile_upload_'+stamp+ path.extension(f.path);
+          var stamp = current_datetime.year.toString() +
+              '-' +
+              current_datetime.month.toString() +
+              '-' +
+              current_datetime.day.toString() +
+              '-' +
+              current_datetime.hour.toString() +
+              '-' +
+              current_datetime.minute.toString() +
+              current_datetime.second.toString();
+          var temp_filename = 'mobile_upload_' + stamp + path.extension(f.path);
 
           var imageFile = f;
-          var stream = new http.ByteStream(async_import.DelegatingStream.typed(imageFile.openRead()));
+          var stream = new http.ByteStream(
+              async_import.DelegatingStream.typed(imageFile.openRead()));
           var length = await imageFile.length();
           var multipartFile = new http.MultipartFile('file', stream, length,
               filename: temp_filename);
 
           request.files.add(multipartFile);
-          count +=1;
+          count += 1;
 
           if (count == files.length) {
             var response = await request.send();
             if (response.statusCode == 200) {
               Navigator.push(
-                        context,
-                        new MaterialPageRoute(
-                        builder: (BuildContext context) => new ViewSingleDataset(this.dataset_id)));
+                  context,
+                  new MaterialPageRoute(
+                      builder: (BuildContext context) =>
+                          new ViewSingleDataset(this.dataset_id)));
             } else {
               Navigator.push(
-                    context,
-                      new MaterialPageRoute(
-                      builder: (BuildContext context) =>
-                      new ViewBasicData("post file FAIL: " + clowderEndpoint+this.dataset_id+'/files?key='+user_info.currentLoginToken)));
+                  context,
+                  new MaterialPageRoute(
+                      builder: (BuildContext context) => new ViewBasicData(
+                          "post file FAIL: " +
+                              clowderEndpoint +
+                              this.dataset_id +
+                              '/files?key=' +
+                              user_info.currentLoginToken)));
             }
           }
         }
       }
-
-
-
     }
   }
-
 }
