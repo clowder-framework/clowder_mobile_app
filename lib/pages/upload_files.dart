@@ -125,7 +125,6 @@ class _FileUploadPageState extends State<FileUploadPage> {
       _message = "multi files chosen";
       hasFile = true;
     });
-
   }
 
 
