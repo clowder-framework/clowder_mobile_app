@@ -27,7 +27,6 @@ class SingleDatasetDataState extends State<ViewSingleDataset> {
   SingleDatasetDataState(this.datasetId);
 
   Future<String> getData(String datasetId) async {
-    print(auth);
     http.Response response = await http.get(
         serverAddress +
             '/api/datasets/'+datasetId+'?key='+currentLoginToken,
@@ -113,7 +112,6 @@ class SingleDatasetDataState extends State<ViewSingleDataset> {
                   style: new TextStyle(fontSize: 12.0)
               ),
               onTap: () {
-                print(data["id"]);
                 Navigator.push(
                     context,
                     new MaterialPageRoute(
