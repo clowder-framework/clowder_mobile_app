@@ -5,7 +5,7 @@ import 'add_clowder_instance_dialog.dart';
 import '../database/clowder_instance.dart';
 import 'home_presenter.dart';
 import 'view_basic_data.dart';
-import 'app_welcome_screen.dart';
+import 'login.dart';
 import '../user_info.dart' as user_info;
 
 
@@ -39,13 +39,13 @@ class ClowderInstanceList extends StatelessWidget {
                                 context,
                                 new MaterialPageRoute(
                                     builder: (BuildContext context) =>
-                                    new MyWelcomeScreen(instance[index].login_token, false)));
+                                    new SignIn(instance[index].login_token, false)));
                           } else {
                             Navigator.push(
                                 context,
                                 new MaterialPageRoute(
                                     builder: (BuildContext context) =>
-                                    new MyWelcomeScreen(instance[index].login_token, true)));
+                                    new SignIn(instance[index].login_token, true)));
                           }
                         },
                         child: Text("Log In"),

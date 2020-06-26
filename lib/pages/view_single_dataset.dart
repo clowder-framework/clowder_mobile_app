@@ -1,3 +1,4 @@
+import 'package:clowder_mobile_app/pages/view_single_file.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
@@ -26,6 +27,7 @@ class SingleDatasetDataState extends State<ViewSingleDataset> {
   SingleDatasetDataState(this.datasetId);
 
   Future<String> getData(String datasetId) async {
+    print(auth);
     http.Response response = await http.get(
         serverAddress +
             '/api/datasets/'+datasetId+'?key='+currentLoginToken,
@@ -111,7 +113,12 @@ class SingleDatasetDataState extends State<ViewSingleDataset> {
                   style: new TextStyle(fontSize: 12.0)
               ),
               onTap: () {
-                print('tap tap');
+                print(data["id"]);
+                Navigator.push(
+                    context,
+                    new MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                        new ViewSingleFile(data["id"])));
               }
           ),
         ],

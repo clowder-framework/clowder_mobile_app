@@ -163,6 +163,7 @@ class SignInState extends State<SignIn> {
 
     String basicAuth =
         'Basic ' + base64Encode(utf8.encode('$emailText:$passwordText'));
+    auth = basicAuth;
     http.Response response = await http.get(
         serverAddress+'/api/me',
         headers: {
@@ -252,7 +253,7 @@ class SignInState extends State<SignIn> {
     // A message preventing log in if the user entered Invalid Credentials
     final message = new Text(
       triedLoggingIn && !isValid
-          ? "Please ReEnter Credentials!"
+          ? "Please Re-enter Credentials!"
           : "",
       style:
       new TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
@@ -265,6 +266,12 @@ class SignInState extends State<SignIn> {
       // TODO set api key for instance
 
       return new main_menu.MainMenu(userId);
+    }
+    else if (useToken) {
+      return Scaffold(
+          body: Center(
+              child: CircularProgressIndicator(
+                  backgroundColor: Colors.cyan, strokeWidth: 5)));
     } else {
       return Scaffold(
         resizeToAvoidBottomPadding: false,
