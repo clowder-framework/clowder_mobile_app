@@ -163,7 +163,6 @@ class SignInState extends State<SignIn> {
 
     String basicAuth =
         'Basic ' + base64Encode(utf8.encode('$emailText:$passwordText'));
-    auth = basicAuth;
     http.Response response = await http.get(
         serverAddress+'/api/me',
         headers: {

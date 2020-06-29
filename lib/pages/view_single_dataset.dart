@@ -116,7 +116,7 @@ class SingleDatasetDataState extends State<ViewSingleDataset> {
                     context,
                     new MaterialPageRoute(
                         builder: (BuildContext context) =>
-                        new ViewSingleFile(data["id"])));
+                        new ViewSingleFile(data["id"], data["filename"])));
               }
           ),
         ],
