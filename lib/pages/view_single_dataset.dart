@@ -16,7 +16,6 @@ class ViewSingleDataset extends StatefulWidget {
 }
 
 class SingleDatasetDataState extends State<ViewSingleDataset> {
-
   String datasetId;
   String dataset_name = "loading...";
   bool isOpened = false;
@@ -29,7 +28,10 @@ class SingleDatasetDataState extends State<ViewSingleDataset> {
   Future<String> getData(String datasetId) async {
     http.Response response = await http.get(
         serverAddress +
-            '/api/datasets/'+datasetId+'?key='+currentLoginToken,
+            '/api/datasets/' +
+            datasetId +
+            '?key=' +
+            currentLoginToken,
         headers: {
           "Authorization": auth,
           "Content-Type": "application/json",
@@ -45,8 +47,6 @@ class SingleDatasetDataState extends State<ViewSingleDataset> {
       } else {
         mapData = jsonDecode(response.body);
         this.dataset_name = mapData["name"];
-
-
       }
     });
 
@@ -56,7 +56,10 @@ class SingleDatasetDataState extends State<ViewSingleDataset> {
   Future<String> getFileData(String datasetId) async {
     http.Response response = await http.get(
         serverAddress +
-            '/api/datasets/'+datasetId+'/files?key='+currentLoginToken,
+            '/api/datasets/' +
+            datasetId +
+            '/files?key=' +
+            currentLoginToken,
         headers: {
           "Authorization": auth,
           "Content-Type": "application/json",
@@ -102,23 +105,17 @@ class SingleDatasetDataState extends State<ViewSingleDataset> {
         children: <Widget>[
           ListTile(
               leading: getIconAssociatedToType(),
-              title: Text(
-                  data["filename"],
+              title: Text(data["filename"],
                   style: new TextStyle(fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis
-              ),
-              subtitle: Text(
-                  "file",
-                  style: new TextStyle(fontSize: 12.0)
-              ),
+                  overflow: TextOverflow.ellipsis),
+              subtitle: Text("file", style: new TextStyle(fontSize: 12.0)),
               onTap: () {
                 Navigator.push(
                     context,
                     new MaterialPageRoute(
                         builder: (BuildContext context) =>
-                        new ViewSingleFile(data["id"], data["filename"])));
-              }
-          ),
+                            new ViewSingleFile(data["id"], data["filename"])));
+              }),
         ],
       ),
     );
@@ -129,32 +126,31 @@ class SingleDatasetDataState extends State<ViewSingleDataset> {
     this.setState(() {
       isOpened = !isOpened;
     });
-    print(isOpened);
   }
 
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
-        appBar: new AppBar(
-          title: new Text("Dataset : " + dataset_name),
-          backgroundColor: Colors.blueAccent,
-        ),
-        body: new Container(
-            padding: EdgeInsets.only(top: 20.0),
-            color: Colors.white10,
-            child: new GridView.count(
-              primary: true,
-              padding: EdgeInsets.all(15.0),
-              crossAxisCount: 2,
-              childAspectRatio: 2.0,
-              children: List.generate(files_data == null ? 0 : files_data.length, (index) {
-                return buildCard(files_data[index]);
-              }),
-            )
-        ),
-        floatingActionButton: new SingleDatasetMenuButton(context,toggle, datasetId, dataset_name),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      appBar: new AppBar(
+        title: new Text("Dataset : " + dataset_name),
+        backgroundColor: Colors.blueAccent,
+      ),
+      body: new Container(
+          padding: EdgeInsets.only(top: 20.0),
+          color: Colors.white10,
+          child: new GridView.count(
+            primary: true,
+            padding: EdgeInsets.all(15.0),
+            crossAxisCount: 2,
+            childAspectRatio: 2.0,
+            children: List.generate(files_data == null ? 0 : files_data.length,
+                (index) {
+              return buildCard(files_data[index]);
+            }),
+          )),
+      floatingActionButton:
+          new SingleDatasetMenuButton(context, toggle, datasetId, dataset_name),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
-
 }
