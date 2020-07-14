@@ -1,9 +1,12 @@
 import 'dart:convert';
-
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../user_info.dart';
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'dart:io';
 
 class ViewSingleFile extends StatefulWidget {
   final String fileId;
@@ -20,8 +23,10 @@ class SingleFileState extends State<ViewSingleFile> {
   String description = "";
   String fileName;
   List tags = [];
-  NetworkImage netImage;
-  bool _loading = true;
+  bool fileIsImage;
+  String _localPath;
+  var task;
+  int progres = 0;
 
   SingleFileState(this.fileId, this.fileName);
 
@@ -29,16 +34,40 @@ class SingleFileState extends State<ViewSingleFile> {
   void initState() {
     this.getFileTags();
     this.getFileDescription();
-    netImage = NetworkImage(
-        serverAddress + '/api/files/' + fileId + '?key=' + currentLoginToken);
-    netImage.resolve(ImageConfiguration()).addListener(
-      ImageStreamListener(
-        (info, call) {
-          this.setState(() {
-            _loading = false;
-          });
-        },
-      ),
+    fileIsImage = isImage();
+    // FlutterDownloader.registerCallback(downloadCallback);
+  }
+
+  // static void downloadCallback(
+  //     String id, DownloadTaskStatus status, int progress) {
+  //   // this.setState(() {
+  //   //   progress = progress;
+  //   // });
+  //   print("Prog : " + progress.toString());
+  // }
+
+  Future<String> _findLocalPath() async {
+    final directory = Platform.isAndroid
+        ? await getExternalStorageDirectory()
+        : await getApplicationDocumentsDirectory();
+    return directory.path;
+  }
+
+  downloadFile() async {
+    _localPath = (await _findLocalPath()) + Platform.pathSeparator + 'Download';
+
+    final savedDir = Directory(_localPath);
+    bool hasExisted = await savedDir.exists();
+    if (!hasExisted) {
+      savedDir.create();
+    }
+
+    task = await FlutterDownloader.enqueue(
+      url: serverAddress + '/api/files/' + fileId + '?key=' + currentLoginToken,
+      savedDir: _localPath,
+      fileName: fileName,
+      showNotification: true,
+      openFileFromNotification: true,
     );
   }
 
@@ -92,6 +121,10 @@ class SingleFileState extends State<ViewSingleFile> {
     });
 
     return "Success";
+  }
+
+  Future<bool> _openDownloadedFile() {
+    return FlutterDownloader.open(taskId: task);
   }
 
   removeFileTags(tagName) async {
@@ -148,7 +181,6 @@ class SingleFileState extends State<ViewSingleFile> {
 
   updateFileDescription(String newDescription) async {
     final putBody = {"description": newDescription};
-    print(json.encode(putBody));
     http.Response response = await http.put(
         serverAddress +
             '/api/files/' +
@@ -160,7 +192,6 @@ class SingleFileState extends State<ViewSingleFile> {
         },
         body: json.encode(putBody));
 
-    print(response.statusCode);
     if (response.statusCode != 200) {
       return "Failure";
     }
@@ -248,121 +279,182 @@ class SingleFileState extends State<ViewSingleFile> {
             scrollDirection: Axis.vertical,
             child: Column(
               children: <Widget>[
-                new Container(
-                    padding: EdgeInsets.only(top: 20),
-                    color: Colors.white10,
-                    child: _loading
-                        ? Center(
-                            child: CircularProgressIndicator(
-                                backgroundColor: Colors.cyan, strokeWidth: 5))
-                        : Center(
-                            child: Container(
-                                padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
-                                child: Image(image: netImage)))),
+                fileContainer(),
+                downloadContainer(),
+                tagContainer(),
                 descriptionContainer(),
-                tagContainer()
               ],
             )));
   }
 
+  isImage() {
+    var splitArr = fileName.split(".");
+    if (splitArr.length > 0) {
+      var ext = splitArr[splitArr.length - 1];
+      if (ext == 'jpg' || ext == 'jpeg' || ext == 'png') {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  Widget fileContainer() {
+    return new Container(
+        padding: EdgeInsets.only(top: 20),
+        color: Colors.white10,
+        child: Center(
+            child: Container(
+                padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
+                child: fileIsImage
+                    ? CachedNetworkImage(
+                        imageUrl: serverAddress +
+                            '/api/files/' +
+                            fileId +
+                            '?key=' +
+                            currentLoginToken,
+                        progressIndicatorBuilder:
+                            (context, url, downloadProgress) =>
+                                CircularProgressIndicator(
+                                    value: downloadProgress.progress),
+                        errorWidget: (context, url, error) =>
+                            new Icon(Icons.error, color: Colors.amber))
+                    : new Container(
+                        padding: EdgeInsets.fromLTRB(10, 10, 10, 10),
+                        child: Text(
+                            "Preview not available. You can still download the file and preview it.")))));
+  }
+
+  Widget downloadContainer() {
+    return new Container(
+        padding: EdgeInsets.only(top: 20),
+        color: Colors.white10,
+        child: new Center(
+            child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+              ActionChip(
+                  avatar: CircleAvatar(
+                    backgroundColor: Colors.grey.shade800,
+                    child: Icon(Icons.file_download),
+                  ),
+                  label: Text('Download File'),
+                  onPressed: () async {
+                    downloadFile();
+                  }),
+              new Container(
+                  padding: EdgeInsets.only(left: 10),
+                  child: ActionChip(
+                      avatar: CircleAvatar(
+                        backgroundColor: Colors.grey.shade800,
+                        child: Icon(Icons.open_in_new),
+                      ),
+                      label: Text('Open File'),
+                      onPressed: () async {
+                        _openDownloadedFile().then((success) {
+                          if (!success) {
+                            Scaffold.of(context).showSnackBar(SnackBar(
+                                content: Text('Cannot open this file')));
+                          }
+                        });
+                      }))
+            ])));
+  }
+
   Widget tagContainer() {
     return new Container(
-        child: tags.length > 0
-            ? new Card(
-                color: Colors.grey,
-                shadowColor: Colors.cyan,
-                child:
-                    Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                  Row(children: <Widget>[
-                    Expanded(
-                        child: const ListTile(
-                      leading: Icon(Icons.attach_file),
-                      title: Text('Tags'),
-                    )),
-                    Container(
-                        padding: EdgeInsets.only(right: 10),
-                        child: ActionChip(
-                            avatar: CircleAvatar(
-                              backgroundColor: Colors.grey.shade800,
-                              child: Icon(Icons.add),
-                            ),
-                            label: Text('Add Tag'),
-                            onPressed: () async {
-                              final String newTag =
-                                  await _asyncInputDialog(context);
-                              this.addFileTag(newTag);
-                              this.setState(() {
-                                tags.add(newTag);
-                              });
-                            }))
-                  ]),
-                  Container(
-                      child: SizedBox(
-                          height: 50.0,
-                          child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: tags.length,
-                              itemBuilder: (BuildContext ctxt, int idx) {
-                                return new Container(
-                                    padding: EdgeInsets.fromLTRB(5, 0, 5, 0),
-                                    child: Chip(
-                                      backgroundColor: Colors.blueAccent,
-                                      deleteIcon: Icon(Icons.delete,
-                                          color: Colors.white54),
-                                      onDeleted: () {
-                                        setState(() {
-                                          this.removeFileTags(tags[idx]);
-                                          tags.removeAt(idx);
-                                        });
-                                      },
-                                      label: Text(
-                                        tags[idx],
-                                        style: TextStyle(color: Colors.white),
-                                      ),
-                                    ));
-                              })))
-                ]))
-            : new Container());
+        height: 150,
+        child: new Card(
+            color: Colors.grey,
+            shadowColor: Colors.cyan,
+            child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+              Row(children: <Widget>[
+                Expanded(
+                    child: const ListTile(
+                  leading: Icon(Icons.attach_file),
+                  title: Text('Tags'),
+                )),
+                Container(
+                    padding: EdgeInsets.only(right: 10),
+                    child: ActionChip(
+                        avatar: CircleAvatar(
+                          backgroundColor: Colors.grey.shade800,
+                          child: Icon(Icons.add),
+                        ),
+                        label: Text('Add Tag'),
+                        onPressed: () async {
+                          final String newTag =
+                              await _asyncInputDialog(context);
+                          this.addFileTag(newTag);
+                          this.setState(() {
+                            tags.add(newTag);
+                          });
+                        }))
+              ]),
+              Container(
+                  child: SizedBox(
+                      height: 50.0,
+                      child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: tags.length,
+                          itemBuilder: (BuildContext ctxt, int idx) {
+                            return new Container(
+                                padding: EdgeInsets.fromLTRB(5, 0, 5, 0),
+                                child: Chip(
+                                  backgroundColor: Colors.blueAccent,
+                                  deleteIcon:
+                                      Icon(Icons.delete, color: Colors.white54),
+                                  onDeleted: () {
+                                    setState(() {
+                                      this.removeFileTags(tags[idx]);
+                                      tags.removeAt(idx);
+                                    });
+                                  },
+                                  label: Text(
+                                    tags[idx],
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ));
+                          })))
+            ])));
   }
 
   Widget descriptionContainer() {
     return new Container(
-        height: 100,
-        child: description.length > 0
-            ? new Card(
-                color: Colors.grey,
-                shadowColor: Colors.cyan,
-                child:
-                    Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                  Row(children: <Widget>[
-                    Expanded(
-                        child: const ListTile(
-                      leading: Icon(Icons.description),
-                      title: Text('Description'),
-                    )),
-                    Container(
-                        padding: EdgeInsets.only(right: 10),
-                        child: ActionChip(
-                            avatar: CircleAvatar(
-                              backgroundColor: Colors.grey.shade800,
-                              child: Icon(Icons.edit),
-                            ),
-                            label: Text('Edit Description'),
-                            onPressed: () async {
-                              final String newDescr =
-                                  await _asyncDescriptionDialog(
-                                      context, description);
-                              this.updateFileDescription(newDescr);
-                              this.setState(() {
-                                description = newDescr;
-                              });
-                            }))
-                  ]),
-                  Expanded(
+        height: 150,
+        child: new Card(
+            color: Colors.grey,
+            shadowColor: Colors.cyan,
+            child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+              Row(children: <Widget>[
+                Expanded(
+                    child: const ListTile(
+                  leading: Icon(Icons.description),
+                  title: Text('Description'),
+                )),
+                Container(
+                    padding: EdgeInsets.only(right: 10),
+                    child: ActionChip(
+                        avatar: CircleAvatar(
+                          backgroundColor: Colors.grey.shade800,
+                          child: Icon(Icons.edit),
+                        ),
+                        label: Text('Edit Description'),
+                        onPressed: () async {
+                          final String newDescr = await _asyncDescriptionDialog(
+                              context, description);
+                          this.updateFileDescription(newDescr);
+                          this.setState(() {
+                            description = newDescr;
+                          });
+                        }))
+              ]),
+              Expanded(
+                  child: Container(
+                      padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
                       child: new Text(description,
                           style: new TextStyle(
-                              color: Colors.white, fontSize: 20.0)))
-                ]))
-            : new Container());
+                              color: Colors.white, fontSize: 20.0))))
+            ])));
   }
 }
