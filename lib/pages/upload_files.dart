@@ -89,7 +89,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
     file = await ImagePicker.pickImage(source: ImageSource.camera);
 
     setState(() {
-      _message = "file has been chosen";
+      _message = "File has been chosen";
       hasFile = true;
     });
     // file = await ImagePicker.pickImage(source: ImageSource.gallery);
@@ -98,7 +98,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
   void _choose_existing() async {
     file = await ImagePicker.pickImage(source: ImageSource.gallery);
     setState(() {
-      _message = "file has been chosen";
+      _message = "File has been chosen";
       hasFile = true;
     });
   }
@@ -106,7 +106,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
   void _choose_existing_file() async {
     file = await FilePicker.getFile();
     setState(() {
-      _message = "file has been chosen";
+      _message = "File has been chosen";
       hasFile = true;
     });
   }
@@ -114,7 +114,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
   void _choose_existing_files() async {
     files = await FilePicker.getMultiFile();
     setState(() {
-      _message = "multi files chosen";
+      _message = "Multi files chosen";
       hasFile = true;
     });
   }
@@ -145,10 +145,8 @@ class _FileUploadPageState extends State<FileUploadPage> {
           "Content-Type": "application/json; charset=utf-8",
           "Accept": "application/json",
         },
-        body: json.encode({
-          "Location": address,
-          "LatLong": location.toString()
-        }));
+        body:
+            json.encode({"Location": address, "LatLong": location.toString()}));
   }
 
   void _clowderUpload() async {

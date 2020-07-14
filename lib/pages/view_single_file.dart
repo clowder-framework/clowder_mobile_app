@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:isolate';
+import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../user_info.dart';
@@ -26,7 +28,9 @@ class SingleFileState extends State<ViewSingleFile> {
   bool fileIsImage;
   String _localPath;
   var task;
-  int progres = 0;
+  bool isDownloading = false;
+  bool isDownloaded = false;
+  ReceivePort _port = ReceivePort();
 
   SingleFileState(this.fileId, this.fileName);
 
@@ -35,16 +39,34 @@ class SingleFileState extends State<ViewSingleFile> {
     this.getFileTags();
     this.getFileDescription();
     fileIsImage = isImage();
-    // FlutterDownloader.registerCallback(downloadCallback);
+
+    IsolateNameServer.registerPortWithName(
+        _port.sendPort, 'downloader_send_port');
+    _port.listen((dynamic data) {
+      DownloadTaskStatus status = data[0];
+      setState(() {
+        if (status == DownloadTaskStatus(3)) {
+          isDownloading = false;
+          isDownloaded = true;
+        }
+      });
+    });
+
+    FlutterDownloader.registerCallback(downloadCallback);
   }
 
-  // static void downloadCallback(
-  //     String id, DownloadTaskStatus status, int progress) {
-  //   // this.setState(() {
-  //   //   progress = progress;
-  //   // });
-  //   print("Prog : " + progress.toString());
-  // }
+  @override
+  void dispose() {
+    IsolateNameServer.removePortNameMapping('downloader_send_port');
+    super.dispose();
+  }
+
+  static void downloadCallback(
+      String id, DownloadTaskStatus status, int progress) {
+    final SendPort send =
+        IsolateNameServer.lookupPortByName('downloader_send_port');
+    send.send([status]);
+  }
 
   Future<String> _findLocalPath() async {
     final directory = Platform.isAndroid
@@ -275,16 +297,17 @@ class SingleFileState extends State<ViewSingleFile> {
           title: new Text(fileName, overflow: TextOverflow.ellipsis),
           backgroundColor: Colors.blueAccent,
         ),
-        body: new SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: Column(
-              children: <Widget>[
-                fileContainer(),
-                downloadContainer(),
-                tagContainer(),
-                descriptionContainer(),
-              ],
-            )));
+        body: Builder(
+            builder: (ctx) => new SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: Column(
+                  children: <Widget>[
+                    fileContainer(),
+                    downloadContainer(ctx),
+                    tagContainer(),
+                    descriptionContainer(),
+                  ],
+                ))));
   }
 
   isImage() {
@@ -325,40 +348,61 @@ class SingleFileState extends State<ViewSingleFile> {
                             "Preview not available. You can still download the file and preview it.")))));
   }
 
-  Widget downloadContainer() {
+  Widget downloadContainer(BuildContext context) {
     return new Container(
         padding: EdgeInsets.only(top: 20),
         color: Colors.white10,
-        child: new Center(
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-              ActionChip(
-                  avatar: CircleAvatar(
-                    backgroundColor: Colors.grey.shade800,
-                    child: Icon(Icons.file_download),
-                  ),
-                  label: Text('Download File'),
-                  onPressed: () async {
-                    downloadFile();
-                  }),
-              new Container(
-                  padding: EdgeInsets.only(left: 10),
-                  child: ActionChip(
-                      avatar: CircleAvatar(
-                        backgroundColor: Colors.grey.shade800,
-                        child: Icon(Icons.open_in_new),
-                      ),
-                      label: Text('Open File'),
-                      onPressed: () async {
-                        _openDownloadedFile().then((success) {
-                          if (!success) {
-                            Scaffold.of(context).showSnackBar(SnackBar(
-                                content: Text('Cannot open this file')));
-                          }
-                        });
-                      }))
-            ])));
+        child: isDownloading
+            ? new Center(
+                child: Chip(
+                avatar: CircleAvatar(
+                  backgroundColor: Colors.grey.shade800,
+                  child: Icon(Icons.access_time),
+                ),
+                label: Text('Downloading...'),
+              ))
+            : new Center(
+                child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                    !isDownloaded
+                        ? ActionChip(
+                            avatar: CircleAvatar(
+                              backgroundColor: Colors.grey.shade800,
+                              child: Icon(Icons.file_download),
+                            ),
+                            label: Text('Download File'),
+                            onPressed: () async {
+                              downloadFile();
+                              this.setState(() {
+                                isDownloading = true;
+                              });
+                            })
+                        : new Container(),
+                    new Container(
+                        padding: EdgeInsets.only(left: 10),
+                        child: ActionChip(
+                            avatar: CircleAvatar(
+                              backgroundColor: Colors.grey.shade800,
+                              child: Icon(Icons.open_in_new),
+                            ),
+                            label: Text('Open File'),
+                            onPressed: () async {
+                              if (!isDownloaded) {
+                                Scaffold.of(context).showSnackBar(SnackBar(
+                                  content: Text('Please download the file!'),
+                                ));
+                              } else {
+                                _openDownloadedFile().then((success) {
+                                  if (!success) {
+                                    Scaffold.of(context).showSnackBar(SnackBar(
+                                        content:
+                                            Text('Cannot open this file')));
+                                  }
+                                });
+                              }
+                            }))
+                  ])));
   }
 
   Widget tagContainer() {
