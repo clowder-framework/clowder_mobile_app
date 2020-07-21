@@ -1,3 +1,4 @@
+import 'package:clowder_mobile_app/pages/view_single_file.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -26,17 +27,67 @@ class _FileUploadPageState extends State<FileUploadPage> {
   final Geolocator geolocator = Geolocator()..forceAndroidLocationManager;
   String dataset_name;
   final String dataset_id;
+  String fileId = "";
   String clowderEndpoint = user_info.serverAddress + '/api/datasets/';
   String _message = "No file chosen";
   bool hasFile = false;
+  bool hasMultiFiles = true;
+  bool isUploaded = false;
+  bool isUploading = false;
   var address = "";
   File file;
+  String fileName;
   List<File> files;
 
   _FileUploadPageState(this.dataset_id, this.dataset_name);
 
   @override
   Widget build(BuildContext context) {
+    if (isUploading) {
+      return Scaffold(
+          body: Center(
+              child: CircularProgressIndicator(
+                  backgroundColor: Colors.cyan, strokeWidth: 5)));
+    }
+    if (isUploaded) {
+      return Scaffold(
+        appBar: new AppBar(
+          title: new Text(dataset_name + ' ' + dataset_id),
+          backgroundColor: Colors.blueAccent,
+        ),
+        body: Center(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+              SizedBox(width: 10.0),
+              RaisedButton(
+                onPressed: _clowderUpload,
+                child: Text('Upload Image'),
+              ),
+              SizedBox(width: 10.0),
+              Text(_message),
+              RaisedButton(
+                onPressed: () => Navigator.push(
+                    context,
+                    new MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            new ViewSingleDataset(this.dataset_id))),
+                child: Text('Go to Dataset'),
+              ),
+              !hasMultiFiles
+                  ? RaisedButton(
+                      onPressed: () => Navigator.push(
+                          context,
+                          new MaterialPageRoute(
+                              builder: (BuildContext context) =>
+                                  new ViewSingleFile(fileId, fileName))),
+                      child: Text('Go to File'),
+                    )
+                  : null,
+            ])),
+      );
+    }
     if (!hasFile) {
       return Scaffold(
         appBar: new AppBar(
@@ -91,6 +142,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
     setState(() {
       _message = "File has been chosen";
       hasFile = true;
+      hasMultiFiles = false;
     });
     // file = await ImagePicker.pickImage(source: ImageSource.gallery);
   }
@@ -116,6 +168,10 @@ class _FileUploadPageState extends State<FileUploadPage> {
     setState(() {
       _message = "Multi files chosen";
       hasFile = true;
+      if (files.length <= 1) {
+        _message = "File chosen";
+        hasMultiFiles = false;
+      }
     });
   }
 
@@ -174,6 +230,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
             current_datetime.minute.toString() +
             current_datetime.second.toString();
         var temp_filename = 'mobile_upload_' + stamp + '.jpg';
+        fileName = temp_filename;
 
         var imageFile = file;
         var stream = new http.ByteStream(
@@ -191,19 +248,25 @@ class _FileUploadPageState extends State<FileUploadPage> {
             filename: temp_filename);
 
         request.files.add(multipartFile);
+        this.setState(() {
+          isUploading = true;
+        });
 
         var response = await request.send();
 
         if (response.statusCode == 200) {
           final respStr = await response.stream.bytesToString();
-          var createdFileId = json.decode(respStr)['id'];
-          _sendMetadata(createdFileId, current_location);
-          Navigator.push(
-              context,
-              new MaterialPageRoute(
-                  builder: (BuildContext context) =>
-                      new ViewSingleDataset(this.dataset_id)));
+          fileId = json.decode(respStr)['id'];
+
+          this.setState(() {
+            isUploaded = true;
+            _message = "File has been uploaded";
+            isUploading = false;
+          });
         } else {
+          this.setState(() {
+            isUploading = false;
+          });
           Navigator.push(
               context,
               new MaterialPageRoute(
@@ -235,6 +298,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
               current_datetime.minute.toString() +
               current_datetime.second.toString();
           var temp_filename = 'mobile_upload_' + stamp + path.extension(f.path);
+          fileName = temp_filename;
 
           var imageFile = f;
           var stream = new http.ByteStream(
@@ -247,13 +311,24 @@ class _FileUploadPageState extends State<FileUploadPage> {
           count += 1;
 
           if (count == files.length) {
+            this.setState(() {
+              isUploading = true;
+            });
             var response = await request.send();
             if (response.statusCode == 200) {
-              Navigator.push(
-                  context,
-                  new MaterialPageRoute(
-                      builder: (BuildContext context) =>
-                          new ViewSingleDataset(this.dataset_id)));
+              this.setState(() {
+                isUploaded = true;
+                if (!hasMultiFiles) {
+                  _message = "File has been uploaded";
+                } else {
+                  _message = "Files have been uploaded";
+                }
+                isUploading = false;
+              });
+              var message = await response.stream.bytesToString();
+              if (!hasMultiFiles) {
+                fileId = json.decode(message)['id'];
+              }
             } else {
               Navigator.push(
                   context,
