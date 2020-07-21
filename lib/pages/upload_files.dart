@@ -63,7 +63,7 @@ class _FileUploadPageState extends State<FileUploadPage> {
               SizedBox(width: 10.0),
               RaisedButton(
                 onPressed: _clowderUpload,
-                child: Text('Upload Image'),
+                child: Text('Upload Image Again'),
               ),
               SizedBox(width: 10.0),
               Text(_message),
