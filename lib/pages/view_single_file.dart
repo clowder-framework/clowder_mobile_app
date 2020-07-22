@@ -318,7 +318,6 @@ class SingleFileState extends State<ViewSingleFile> {
         return true;
       }
     }
-
     return false;
   }
 
