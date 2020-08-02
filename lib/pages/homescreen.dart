@@ -7,9 +7,6 @@ import '../database/clowder_instance.dart';
 import 'home_presenter.dart' as hp;
 import 'list_clowder_instance.dart' as clist;
 
-
-
-
 class MyHomeScreen extends StatefulWidget {
   MyHomeScreen({Key key, this.title}) : super(key: key);
   final String title;
@@ -18,7 +15,8 @@ class MyHomeScreen extends StatefulWidget {
   _MyHomeScreenState createState() => new _MyHomeScreenState();
 }
 
-class _MyHomeScreenState extends State<MyHomeScreen> implements hp.HomeContract {
+class _MyHomeScreenState extends State<MyHomeScreen>
+    implements hp.HomeContract {
   hp.HomePresenter homePresenter;
   bool isOpened = false;
 
@@ -43,7 +41,8 @@ class _MyHomeScreenState extends State<MyHomeScreen> implements hp.HomeContract 
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: horizontalTitleAlignment,
           children: <Widget>[
-            new Text('Clowder Instances',
+            new Text(
+              'Clowder Instances',
               style: new TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -58,12 +57,13 @@ class _MyHomeScreenState extends State<MyHomeScreen> implements hp.HomeContract 
   Future _openAddClowderInstanceDialog() async {
     showDialog(
       context: context,
-      builder: (BuildContext context) =>
-          new AddClowderInstanceDialog().buildAboutDialog(context, this, false, null),
+      builder: (BuildContext context) => new AddClowderInstanceDialog()
+          .buildAboutDialog(context, this, false, null),
     );
 
     setState(() {});
   }
+
   List<Widget> _buildActions() {
     return <Widget>[
       new IconButton(
@@ -84,8 +84,6 @@ class _MyHomeScreenState extends State<MyHomeScreen> implements hp.HomeContract 
     print(isOpened);
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
@@ -99,26 +97,25 @@ class _MyHomeScreenState extends State<MyHomeScreen> implements hp.HomeContract 
           if (snapshot.hasError) print(snapshot.error);
           var data = snapshot.data;
           return snapshot.hasData
-              ? new clist.ClowderInstanceList(data,homePresenter)
+              ? new clist.ClowderInstanceList(data, homePresenter)
               : new Center(child: new CircularProgressIndicator());
         },
       ),
       bottomNavigationBar: BottomAppBar(
           child: new Row(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              new IconButton(
-                icon: const Icon(
-                  Icons.add,
-                  color: Colors.black,
-                ),
-                // onPressed: _openAddUserDialog,
-                onPressed: _openAddClowderInstanceDialog,
-              ),
-            ],
-          )
-      ),
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          new IconButton(
+            icon: const Icon(
+              Icons.add,
+              color: Colors.black,
+            ),
+            // onPressed: _openAddUserDialog,
+            onPressed: _openAddClowderInstanceDialog,
+          ),
+        ],
+      )),
     );
   }
 

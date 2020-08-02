@@ -8,9 +8,7 @@ import 'dart:convert';
 import '../database/database_helper.dart';
 import '../database/clowder_instance.dart';
 
-
 class SignIn extends StatefulWidget {
-
   String current_token;
   bool useToken;
 
@@ -34,28 +32,26 @@ class SignInState extends State<SignIn> {
   SignInState(this.current_token, this.useToken);
 
   Future<String> getUserInfo(basicAuth) async {
-    http.Response response = await http.get(
-        serverAddress+'/api/me',
-        headers: {
-          "Authorization": basicAuth,
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Credentials": "true",
-          "Access-Control-Allow-Methods": "*",
-          "Content-Encoding": "gzip",
-          "Access-Control-Allow-Origin": "*"
-        });
+    http.Response response =
+        await http.get(serverAddress + '/api/me', headers: {
+      "Authorization": basicAuth,
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Methods": "*",
+      "Content-Encoding": "gzip",
+      "Access-Control-Allow-Origin": "*"
+    });
     if (response.statusCode == 200) {
       var userData = jsonDecode(response.body);
       userId = userData["id"];
     }
 
     return "Success";
-
   }
 
-  String generateToken()  {
+  String generateToken() {
     int now = new DateTime.now().millisecondsSinceEpoch;
-    String token = '_'+now.toString();
+    String token = '_' + now.toString();
     return token;
   }
 
@@ -63,7 +59,7 @@ class SignInState extends State<SignIn> {
   void initState() {
     super.initState();
 
-    if (useToken){
+    if (useToken) {
       this._handleTokenSignIn();
     }
 
@@ -75,23 +71,19 @@ class SignInState extends State<SignIn> {
         context,
         new MaterialPageRoute(
             builder: (BuildContext context) =>
-            new ViewBasicData(this.current_token)
-        )
-    );
+                new ViewBasicData(this.current_token)));
   }
-
 
   Future<Null> _handleTokenSignIn() async {
     triedLoggingIn = true;
-    http.Response response = await http.get(
-        serverAddress+'/api/me?key='+this.current_token,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Credentials": "true",
-          "Access-Control-Allow-Methods": "*",
-          "Content-Encoding": "gzip",
-          "Access-Control-Allow-Origin": "*"
-        });
+    http.Response response = await http
+        .get(serverAddress + '/api/me?key=' + this.current_token, headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Methods": "*",
+      "Content-Encoding": "gzip",
+      "Access-Control-Allow-Origin": "*"
+    });
 
     if (response.statusCode == 200) {
       var content = jsonDecode(response.body);
@@ -106,10 +98,7 @@ class SignInState extends State<SignIn> {
           context,
           new MaterialPageRoute(
               builder: (BuildContext context) =>
-              new main_menu.MainMenu(userId)
-          )
-      );
-
+                  new main_menu.MainMenu(userId)));
     } else {
       setState(() {
         useToken = false;
@@ -118,35 +107,30 @@ class SignInState extends State<SignIn> {
           context,
           new MaterialPageRoute(
               builder: (BuildContext context) =>
-              new main_menu.MainMenu(userId)
-          )
-      );
+                  new main_menu.MainMenu(userId)));
     }
   }
 
   Future<String> _generateNewToken() async {
     String new_token_name = generateToken();
 
-    String request_url = serverAddress + '/api/users/keys?name=' +
-        new_token_name;
+    String request_url =
+        serverAddress + '/api/users/keys?name=' + new_token_name;
 
-    var jsonData = json.encode({
-      "name": new_token_name
+    var jsonData = json.encode({"name": new_token_name});
+
+    http.Response token_response =
+        await http.post(request_url, body: jsonData, headers: {
+      "Authorization": auth,
+      "Content-Type": "application/json",
+      "Accept": "application/json",
     });
-
-    http.Response token_response = await http.post(
-        request_url,
-        body: jsonData,
-        headers: {
-          "Authorization": auth,
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        });
 
     if (token_response.statusCode == 200) {
       var content = jsonDecode(token_response.body);
       currentLoginToken = content["key"];
-      ClowderInstance current_instance = new ClowderInstance(serverAddress, content["key"]);
+      ClowderInstance current_instance =
+          new ClowderInstance(serverAddress, content["key"]);
       current_instance.setClowderInstanceId(currentInstanceId);
       bool updated = await db.updateClowderInstance(current_instance);
       if (updated) {
@@ -163,18 +147,15 @@ class SignInState extends State<SignIn> {
 
     String basicAuth =
         'Basic ' + base64Encode(utf8.encode('$emailText:$passwordText'));
-    http.Response response = await http.get(
-        serverAddress+'/api/me',
-        headers: {
-          "Authorization": basicAuth,
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Credentials": "true",
-          "Access-Control-Allow-Methods": "*",
-          "Content-Encoding": "gzip",
-          "Access-Control-Allow-Origin": "*"
-        });
-
-
+    http.Response response =
+        await http.get(serverAddress + '/api/me', headers: {
+      "Authorization": basicAuth,
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Methods": "*",
+      "Content-Encoding": "gzip",
+      "Access-Control-Allow-Origin": "*"
+    });
 
     if (response.statusCode == 200) {
       setState(() {
@@ -192,17 +173,15 @@ class SignInState extends State<SignIn> {
     }
   }
 
-
   // A widget to allow users to sign in locally/ sign in with Google
   Widget _buildBody() {
-
     final email = new TextField(
       keyboardType: TextInputType.emailAddress,
       autofocus: false,
-      style: TextStyle(color: Colors.white70),
+      style: TextStyle(color: Colors.black),
       decoration: InputDecoration(
         hintText: 'Email',
-        hintStyle: new TextStyle(color: Colors.white30),
+        hintStyle: new TextStyle(color: Colors.black),
         contentPadding: EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
       ),
       onChanged: (String str) {
@@ -215,10 +194,10 @@ class SignInState extends State<SignIn> {
     final password = new TextField(
         obscureText: true,
         autofocus: false,
-        style: TextStyle(color: Colors.white70),
+        style: TextStyle(color: Colors.black),
         decoration: InputDecoration(
           hintText: 'Password',
-          hintStyle: new TextStyle(color: Colors.white30),
+          hintStyle: new TextStyle(color: Colors.black),
           contentPadding: EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
         ),
         onChanged: (String str) {
@@ -233,7 +212,7 @@ class SignInState extends State<SignIn> {
         minWidth: 200.0,
         height: 42.0,
         onPressed: _handleLocalSignIn,
-        color: Colors.red,
+        color: Colors.blueAccent,
         child: Text('Log In', style: TextStyle(color: Colors.white)),
       ),
     );
@@ -251,24 +230,26 @@ class SignInState extends State<SignIn> {
 
     // A message preventing log in if the user entered Invalid Credentials
     final message = new Text(
-      triedLoggingIn && !isValid
-          ? "Please ReEnter Credentials!"
-          : "",
+      triedLoggingIn && !isValid ? "Please Re-enter Credentials!" : "",
       style:
-      new TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+          new TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
       textAlign: TextAlign.center,
     );
 
-    if ( isValid) {
-
+    if (isValid) {
       // TODO get api key here
       // TODO set api key for instance
 
       return new main_menu.MainMenu(userId);
+    } else if (useToken) {
+      return Scaffold(
+          body: Center(
+              child: CircularProgressIndicator(
+                  backgroundColor: Colors.cyan, strokeWidth: 5)));
     } else {
       return Scaffold(
         resizeToAvoidBottomPadding: false,
-        backgroundColor: Colors.black87,
+        backgroundColor: Colors.white,
         body: Center(
           child: ListView(
             shrinkWrap: true,
@@ -295,23 +276,21 @@ class SignInState extends State<SignIn> {
   Widget build(BuildContext context) {
     return new Scaffold(
         body: new ConstrainedBox(
-          constraints: const BoxConstraints.expand(),
-          child: _buildBody(),
-        ));
+      constraints: const BoxConstraints.expand(),
+      child: _buildBody(),
+    ));
   }
 
   Widget build2(BuildContext context) {
     return new Scaffold(
-      body: Column(
-        children: <Widget>[
-          new Text("data"),
-          new ConstrainedBox(
-            constraints: const BoxConstraints.expand(),
-            child: _buildBody(),
-          )
-        ],
-      )
-    );
+        body: Column(
+      children: <Widget>[
+        new Text("data"),
+        new ConstrainedBox(
+          constraints: const BoxConstraints.expand(),
+          child: _buildBody(),
+        )
+      ],
+    ));
   }
-
 }
